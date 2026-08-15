@@ -1,0 +1,228 @@
+---
+name: fable-context-maxxing
+description: >
+  Mandatory development workflow for any task that changes production code,
+  fixes a bug, adds a feature, performs a refactor, or creates a commit.
+  MUST be loaded before implementation begins. Maximizes the Fable
+  subscription (lean orchestrator context, delegation to Opus subagents,
+  index navigation, evidence ledger) and enforces Commit Contract, Red
+  Proof, frozen acceptance tests, delegated implementation, independent
+  verification, bounded repair loops, Commit Gate, and requirement-first
+  audit via global hooks.
+---
+
+# fable-context-maxxing
+
+## Teil 1: Subscription-Maximierung (zuerst lesen)
+
+Fable ist das teuerste und knappste Kontingent der Subscription. Dieses
+Setup ist so gebaut, dass Fable-Tokens fast ausschließlich in
+Entscheidungen fließen, nicht in Volumen:
+
+1. **Implementierung wird delegiert.** Opus-Subagenten (`model: "opus"`)
+   schreiben den Produktivcode in eigenen, frischen Kontexten. Lange
+   Implementierungs-Transkripte, Suchläufe, Fehlversuche und Testausgaben
+   verbrauchen Opus-Kontingent, nicht das Fable-Fenster. Fable sieht nur
+   die kompakte strukturierte Rückgabe.
+2. **Contract-Handoffs statt Verlaufs-Mitschleppen.** Die Übergabe an Opus
+   ist ein kleiner, in sich vollständiger Commit-Contract. Die Codebase
+   muss nicht pro Runde neu erklärt werden, und der Fable-Kontext muss
+   keine Implementierungsdetails halten.
+3. **Index-Navigation statt Datei-Dumps.** `codebase-memory-mcp`
+   (`search_code`, `get_code_snippet`, `search_graph`, `trace_path`)
+   liefert gezielte Snippets. Volle Dateien werden nur für die tatsächlich
+   zu prüfenden Hunks gelesen.
+4. **Evidence Ledger statt Rekonstruktion.** Nachweise pro Commit stehen
+   in einem kompakten strukturierten Eintrag (300 bis 800 Tokens). Block-
+   und Final-Audits navigieren über das Ledger, statt alte Chats oder
+   Agent-Transkripte erneut einzulesen.
+5. **Begrenzte Reparaturschleifen.** Maximal zwei Repairs pro Defect,
+   danach Re-plan. Das verhindert die teuerste Token-Senke agentischer
+   Entwicklung: endlose Fix-Schleifen mit wachsendem Kontext.
+6. **Frischer Audit-Kontext.** Die Abschluss-Abnahme läuft in einem
+   eigenen Agenten und verbraucht kein Hauptfenster. Sie ist gleichzeitig
+   unabhängiger (kein Anchoring an "alles erfüllt"-Zusammenfassungen).
+7. **Mechanische Gates statt Modell-Disziplin.** Freeze- und Commit-Gates
+   werden von Hooks und einem CLI deterministisch geprüft. Fable muss den
+   Prozesszustand nicht im Kontext halten oder wiederholen; er liegt in
+   `~/.claude/red-proof/state/`.
+
+Effekt: das Fable-Fenster enthält Plan, Contracts, Diffs und
+Entscheidungen. Alles Volumen (Implementieren, Suchen, Testläufe, Audit)
+läuft in delegierten oder frischen Kontexten.
+
+## Teil 2: Der erzwungene Commit-Zyklus (red-proof)
+
+### 0. Grundprinzip
+
+Die Entwicklung folgt einem strikt getrennten Maker-Checker-Auditor-Modell:
+
+- Orchestrator (das Hauptmodell der Session, aktuell Fable 5): Orchestrierung, Anforderungsableitung, Commit-Planung, Test-Spezifikation, Red-Proof, Review, Verifikation, Staging und Commit-Entscheidung.
+- Opus (Implementierer): ausschließlich Implementierung und Reparatur des Produktivcodes.
+- Audit-Agent: unabhängige Vollständigkeits-Abnahme in frischem Kontext.
+
+Grundregeln:
+
+1. Der Implementierer entscheidet niemals über die eigene Abnahme.
+2. Der Implementierer darf die Abnahmekriterien nicht verändern.
+3. Ein grüner Testlauf beweist Konformität mit Tests, nicht automatisch Korrektheit der Spezifikation.
+4. Die finale Aussage lautet daher nicht "das Feature ist korrekt", sondern "das Feature entspricht nachweisbar den spezifizierten Anforderungen, soweit diese durch Audit und Verifikation abgedeckt sind".
+
+### 1. Commit-Contract (Orchestrator)
+
+Vor jeder Implementierung erstellt der Orchestrator einen kleinen verbindlichen Commit-Contract.
+
+Requirement Provenance: Jedes Akzeptanzkriterium wird auf seinen Ursprung zurückgeführt:
+
+`Originalanforderung -> Commit-Ziel -> Akzeptanzkriterium`
+
+Damit darf kein Akzeptanzkriterium lediglich aus der bereits entstandenen Implementierung abgeleitet werden.
+
+Contract-Inhalt:
+
+- Ziel und erwartetes Verhalten
+- konkrete Akzeptanzkriterien
+- Nicht-Ziele
+- relevante ursprüngliche Anforderungen
+- erlaubte beziehungsweise erwartete Änderungsfläche
+- relevante bestehende Invarianten
+- erforderliche neue Tests
+- unveränderliche Regression-Gates
+- öffentliche beziehungsweise externe Schnittstellen
+- relevante Security-, Persistenz-, Audit- oder Idempotenz-Invarianten
+
+Der Commit muss so klein sein, dass er atomar, unabhängig prüfbar, verständlich und einzeln revertierbar bleibt.
+
+Eine notwendige Scope-Erweiterung führt zurück zu Phase 1. Keine stillschweigende Scope-Erweiterung während der Implementierung.
+
+### 2. Red Phase (Orchestrator)
+
+Der Orchestrator schreibt die verbindlichen Akzeptanz- und Regressionstests. Es gibt zwei legitime Red-Arten.
+
+**A. Behavior-Red** (für bereits existierende Schnittstellen): Der Test muss wegen des fachlich falschen oder fehlenden Verhaltens scheitern. Beispiele: erwarteter Status fehlt; falsche Validierung; falsches Audit-Ergebnis; Idempotenzverletzung.
+
+**B. Contract-Red** (für bewusst neu einzuführende Module, Klassen, Funktionen oder Methoden): Hier darf der erwartete Fehler ausdrücklich beispielsweise `ImportError`, `ModuleNotFoundError` oder `AttributeError` sein, aber nur dann, wenn exakt das fehlende Symbol Bestandteil des eingefrorenen Commit-Contracts ist. Ein fehlendes neues API-Symbol ist in diesem Fall der erwartete Contract-Red und kein ungültiger Setup-Fehler. Der Orchestrator schreibt niemals Produktivcode oder Interface-Skelette.
+
+**Ungültiges Rot**: Nicht akzeptiert werden unbeabsichtigte Fehler wie Syntaxfehler im Test, falscher Importpfad, kaputte Testkonfiguration, fehlerhafte Testdaten, unbeabsichtigte Fixture-Probleme oder Fehler ohne Bezug zum Commit-Contract.
+
+**Red-Proof**: Festgehalten werden Test-ID, Red-Art (`contract` oder `behavior`), erwarteter Fehlergrund, tatsächlicher Fehlergrund, Ergebnis (erwartetes Rot bestätigt / nicht bestätigt). Nur bei bestätigtem Red-Proof darf die Implementierung beginnen. Rote Tests werden nicht als dauerhaft roter Zwischenstand committet; der finale Commit muss grün und einzeln bisectable sein.
+
+### 3. Mechanischer Freeze (Orchestrator)
+
+**Git-Index-Eigentum**: Nur der Orchestrator darf `git add` ausführen, Staging verändern und Commits erstellen. Opus darf niemals stagen, den Index verändern oder committen.
+
+Der Orchestrator staged vor der Delegation die verbindlichen Akzeptanztests. Anschließend wird ein Freeze-Fingerprint über den eingefrorenen Test-Patch erzeugt (Testpfade, Testnamen, Hash des Acceptance-Test-Patches, Hash des Commit-Contracts).
+
+**Freeze-Regel**: Während der Implementierung darf Opus eingefrorene Tests nicht verändern. Vor der Abnahme wird mechanisch geprüft: staged Test-Patch byte-identisch; keine Working-Tree-Änderungen an eingefrorenen Tests; keine Assertions entfernt oder verändert; kein `skip`/`xfail` hinzugefügt. Mismatch bedeutet automatische Ablehnung, keine Ermessensentscheidung.
+
+**Zusätzliche Tests**: Opus darf zusätzliche Tests in nicht eingefrorenen Testbereichen ergänzen, sofern sie keine Akzeptanztests verändern, keine bestehenden Erwartungen abschwächen und im Commit-Scope bleiben.
+
+### 4. Implementierung (Opus)
+
+Delegation über das Agent-Tool mit `model: "opus"`. Bewusst keine Unterversion gepinnt: `opus` bedeutet die aktuell bereitgestellte Opus-Version.
+
+Übergabe-Prompt enthält: Commit-Contract, Requirement Provenance, Akzeptanzkriterien, Red-Proof, relevante Testnamen, erwartete Änderungsfläche, harte Projekt-Leitplanken, explizite Nicht-Ziele, unveränderliche Invarianten.
+
+Codebase-Navigation: zuerst `codebase-memory-mcp`, direktes Lesen nur für relevante Bereiche. Der Index ist Navigationsquelle, keine Verifikationsquelle.
+
+Opus darf: Produktivcode implementieren, interne Helfer ergänzen, zusätzliche Tests innerhalb der Regeln ergänzen. Opus darf nicht: Akzeptanztests verändern; Assertions abschwächen; Tests entfernen, skippen oder xfailen; Scope erweitern; unrelated Refactorings; stagen; committen.
+
+### 5. Implementierungs-Rückgabe (Opus)
+
+Kompakte strukturierte Rückgabe: geänderte Dateien, erfüllte Akzeptanzkriterien, Designentscheidungen, ergänzte Tests, Risiken, Unsicherheiten. Die Rückgabe ist kein Beweis, nur Navigationsindex für das Review.
+
+### 6. Verification Gate (Orchestrator)
+
+**6.1 Freeze Gate** (zuerst, mechanisch): Contract- und Acceptance-Test-Fingerprint unverändert, keine Test-Abschwächung. Bei Fehler sofortige Ablehnung ohne weitere Review-Arbeit.
+
+**6.2 Targeted Verification**: neue Akzeptanztests, unmittelbar betroffene Tests, relevante Regressionstests. Alle grün.
+
+**6.3 Impact Review**: `detect_changes` bestimmt die Impact-Fläche, danach wird jeder tatsächlich geänderte Hunk direkt gelesen. Bei Änderungen an öffentlichen APIs, Core-Code, Persistenz, Audit, Security, Idempotenz, Tenant-Isolation oder Lifecycle-State zusätzlich Call-/Dependency-Pfade über den Code-Graph. `detect_changes` ersetzt niemals das Lesen der Hunks.
+
+**6.4 Contract Review**: Für jedes Akzeptanzkriterium ein konkreter Nachweis: `Akzeptanzkriterium -> Code -> Test/Probe -> Ergebnis`. Nicht zulässig: "sieht korrekt aus", "Opus sagt, es sei umgesetzt", "Suite ist grün" ohne Bezug zum Kriterium.
+
+**6.5 Scope Review**: Änderungen außerhalb des Contracts, unnötige Refactorings, unbeabsichtigte API-Änderungen, neue Persistenz, neue personenbezogene Kopien, Audit-/Security-/Idempotenz-Auswirkungen, Freeze-Invarianten.
+
+### 7. Repair Loop
+
+Bei fehlgeschlagenem Verification Gate implementiert der Orchestrator nicht selbst, sondern erstellt einen Defect Contract: beobachtetes Verhalten, erwartetes Verhalten, reproduzierender Test, betroffenes Akzeptanzkriterium, erlaubter Fix-Scope. Reparatur geht an Opus.
+
+**Repair-Verifikation** (in dieser Reihenfolge): 1. Freeze Gate; 2. reproduzierender Defect-Test; 3. relevante Akzeptanztests; 4. unmittelbar betroffene Regressionstests; 5. Review aller durch die Reparatur geänderten Hunks.
+
+Vollsuite pro Repair-Iteration nicht zwingend, aber sofort bei: Core-Code, öffentlichen Interfaces, Persistenz, Audit-Verhalten, Security-/Trust-Grenzen, Idempotenz/Lifecycle-State, unerwartet sichtbar gewordener Regression. Am Commit Gate ist die Vollsuite immer zwingend.
+
+**Repair-Eskalation**: Maximal zwei Repair-Zyklen pro Defect Contract. Danach: Stop repairing. Re-plan. Zurück zu Phase 1 (Commit zu groß? Contract falsch? Architekturentscheidung fehlt? Aufteilen?). Keine unbegrenzten Reparaturschleifen.
+
+### 8. Commit Gate (Orchestrator)
+
+Pflicht: Freeze Gate grün; alle Akzeptanztests grün; betroffene Regressionstests grün; vollständige Suite grün; projektspezifische Checks grün; vollständiger Diff reviewed; Contract vollständig erfüllt; kein Scope Creep; keine offenen Regressionen; keine unerklärten TODOs; Diff atomar und revertierbar.
+
+Erst danach staged der Orchestrator den Produktivcode und committet. Jeder Commit der Hauptserie ist einzeln grün, verständlich, bisectable, revertierbar.
+
+### 9. Evidence Ledger
+
+Pro Commit ein kompakter strukturierter Eintrag: `commit_id`, `contract_hash`, `requirement_ids`, `frozen_test_hash`, `red_proof`, `changed_files`, `targeted_tests`, `regression_tests`, `full_suite`, `project_gates`, `review_status`, `known_risks`, `final_commit_hash`. Das Ledger ist Navigations- und Nachweisindex; es ersetzt nicht Code, Tests, Git-Historie oder eigene Ausführung durch den Audit-Agenten.
+
+### 10. Block Gate
+
+Nach jedem im Plan definierten Block: vollständige Suite; projektspezifische Reproduktions-Gates; Block-Invarianten; Plan-vs-Commit-Abgleich; Prüfung auf ausgelassenen Scope; Prüfung des Evidence Ledgers; erst danach Fast-Reindex (kein fehlerhafter Zwischenstand als Navigationsbasis).
+
+### 11. Unabhängige Vollständigkeits-Abnahme
+
+Frischer Audit-Kontext. Der Audit-Agent erhält: Gesamtplan, ursprüngliche Nutzerentscheidungen, Leitplanken, finales Repository, Commit-Serie, Tests, Evidence Ledger. Er erhält nicht: Implementierungsdiskussionen, Reparaturrechtfertigungen, Selbsteinschätzungen, "alles erfüllt"-Zusammenfassungen.
+
+**Requirement-First**: Der Auditor interpretiert die Anforderungen selbst und erstellt `Anforderung -> Commit -> Implementierung -> Test/Probe -> eigener Nachweis`. Ergebnisse: erfüllt und nachgewiesen; teilweise erfüllt; nicht erfüllt; nicht nachweisbar.
+
+**Eigenständige Verifikation**: Der Auditor führt relevante Prüfungen selbst aus (Akzeptanztests, Vollsuite, Projekt-Gates, End-to-End-Demos) und darf eigene adversariale Probes bauen. Findings gehen an den Orchestrator zurück.
+
+**Schwerpunkte**: Anforderungen ohne Test; Tests ohne Anforderung; nominelle statt semantische Umsetzung; ungetestete Negativpfade; stille Scope-Lücken; unbeabsichtigte Verhaltensänderungen; Idempotenzfehler; Persistenz personenbezogener Daten; Audit-Trail-Lücken; Security-/Trust-Model-Verletzungen; Dokumentation vs. Verhalten. Ein grüner Testlauf ist kein Vollständigkeitsnachweis.
+
+### 12. Audit-Finding Loop
+
+Auditor beschreibt Finding und Nachweis; Orchestrator ordnet die betroffene Anforderung zu, erstellt neuen Commit-Contract, schreibt den roten Regressionstest; normaler Zyklus; danach erneute gezielte Audit-Prüfung. Der Auditor implementiert nicht selbst.
+
+### 13. Finales Release Gate
+
+Nach geschlossenem Audit, jeweils sofern im Projekt definiert: sauberer Repository-Zustand; vollständige Testsuite; Reproduktionsprüfung; Fresh-Clone-Prüfung; zentrale End-to-End-Demos; Headline-Benchmark unverändert; Stil-/Zeichen-Gates; Attribution-Check; Plan-vs-Code-Abgleich; Testzahl-Sync; kein offenes Audit Finding.
+
+## Teil 3: Mechanische Durchsetzung (red-proof gate)
+
+Globale PreToolUse-Hooks blockieren Produktivcode-Edits ohne aktiven Zyklus und `git commit` ohne bestandenes Commit Gate. Zustände und Nachweise erzeugt das CLI selbst und bindet sie an einen Content-Fingerprint (HEAD plus Inhalt aller geänderten Dateien). `git add` ändert den Fingerprint nicht (inhaltsbasiert); jede echte Codeänderung invalidiert vorhandene Nachweise automatisch.
+
+```
+RP() { python3 ~/.claude/red-proof/red_proof.py "$@"; }
+
+RP contract --file <contract.md>            # Phase CONTRACT_CREATED, setzt Zyklus zurück
+RP red --test <name> --type contract|behavior --expected "<Grund>" -- <testcmd>
+git add <acceptance-tests> && RP freeze     # Phase TESTS_FROZEN, Patch-Fingerprint
+# Implementierung durch Opus
+RP check freeze
+RP check targeted -- <testcmd>
+RP check full-suite -- <suitecmd>
+RP attest --diff-reviewed --contract-ok     # einzige modell-attestierte Punkte
+RP commit-gate                              # COMMIT_READY, an Fingerprint gebunden
+git commit ...                              # nur jetzt erlaubt, genau ein Commit pro Gate
+RP status                                   # Zustand und Fingerprints anzeigen
+RP exempt --reason "<why>"                  # nur für klassifizierte Ausnahmen (4h, geloggt)
+```
+
+Hinweis für zsh: `$RP`-Variablen werden nicht wortgesplittet; die Funktion `RP()` wie oben verwenden. Deny-Meldungen der Hooks nennen jeweils den nächsten erforderlichen Schritt.
+
+## Teil 4: Verbindliche Meta-Regeln
+
+- Tests vor Implementierung.
+- Neues API darf mit erwartetem Contract-Red beginnen; bestehendes Verhalten verlangt Behavior-Red.
+- Der Orchestrator schreibt keinen Produktivcode.
+- Opus verändert keine eingefrorenen Akzeptanztests.
+- Nur der Orchestrator staged und committet.
+- Freeze und Commit Gate werden mechanisch geprüft (Hooks plus CLI).
+- Implementierer und Abnehmer sind getrennt.
+- Reparaturschleifen sind begrenzt (maximal zwei pro Defect Contract).
+- Vollsuite zwingend vor jedem Haupt-Commit.
+- `codebase-memory-mcp` ist Navigationshilfe, keine Beweisquelle.
+- Tatsächlicher Diff, Tests und Laufzeitverhalten sind Verifikationsquellen.
+- Kein Scope Creep ohne neuen Contract.
+- Jeder Haupt-Commit ist grün und bisectable.
+- Ein grüner Testlauf ist notwendig, aber nicht hinreichend.
+- Der Audit-Agent interpretiert die ursprünglichen Anforderungen unabhängig und darf Tests und Demos selbst ausführen.
+- Das Verfahren beweist Konformität mit der überprüften Spezifikation, nicht absolute Korrektheit der Spezifikation.

@@ -1,0 +1,29 @@
+{
+  "_comment": "Merge the PreToolUse array below into ~/.claude/settings.json. Keep any hook groups you already have. install.sh does this for you.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/red-proof/red_proof.py hook edit",
+            "timeout": 20,
+            "statusMessage": "red-proof gate: edit check"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/red-proof/red_proof.py hook bash",
+            "timeout": 20,
+            "statusMessage": "red-proof gate: commit check"
+          }
+        ]
+      }
+    ]
+  }
+}

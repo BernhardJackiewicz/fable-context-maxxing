@@ -1,0 +1,26 @@
+## Mandatory development workflow: fable-context-maxxing
+
+For every task that may modify production code or create a commit, you
+MUST load and follow the `fable-context-maxxing` skill BEFORE making
+the first production-code change.
+
+Applies to: features, bug fixes, refactorings, behavior changes, API
+changes, migrations, production configuration changes, and commits
+containing any of the above.
+
+The workflow may not be silently abbreviated or replaced by an ad-hoc
+implementation/review cycle. For non-exempt tasks: the orchestrator
+owns specification, acceptance tests, verification, staging and
+commits; implementation is delegated to a subagent with model:
+"opus"; the implementer never modifies frozen acceptance tests,
+never stages, never commits; no commit without a passed commit gate.
+
+Only exempt: research/analysis with no production-code changes,
+documentation-only work, and trivial typo/comment-only changes.
+Before using an exemption, explicitly classify the task as exempt,
+state why, and run:
+`python3 ~/.claude/red-proof/red_proof.py exempt --reason '<why>'`
+
+Enforcement: global PreToolUse hooks block production-code edits
+without an active cycle and `git commit` without a passed commit
+gate. State and evidence live in `~/.claude/red-proof/`.

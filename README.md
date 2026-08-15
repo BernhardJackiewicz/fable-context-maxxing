@@ -1,0 +1,390 @@
+# fable-context-maxxing
+
+**Get about 49% more out of a Fable subscription: on implementation-heavy
+work this workflow spends 33% fewer tokens on the expensive model, at an
+identical success rate.** The orchestrator's context holds decisions; the
+volume (implementation, search, test output, audit) runs in delegated or
+fresh contexts.
+
+Measured over 16 paired runs, not estimated: cost is read from the `usage`
+field of every response and the raw per-run data ships in this repository.
+
+Three things that number does not say, stated here rather than in a
+footnote, because they decide whether it is worth anything to you:
+
+- **Total spend does not drop.** Delegation moves consumption from the
+  expensive model to the cheaper one. It is a win when the strongest
+  model is the scarce resource, which is the normal case on a
+  subscription, and a wash when you are counting dollars on an API key.
+- **It saves nothing on small tasks.** On a one-module fix the same
+  measurement shows no gain on the expensive model and 59% higher total
+  cost. The break-even is real and it is documented below.
+- **It was measured on small synthetic repositories**, at roughly 5 tool
+  calls and $0.22 per run. Nothing here has been measured at the scale of
+  a large production codebase.
+
+Doing that safely needs one thing: if the strongest model is not reading
+every line the implementer wrote, something other than trust has to
+verify the result. So this ships with an evidence-gated commit cycle
+that a hook actually enforces, called red-proof.
+
+## Why the context window is the scarce resource
+
+The strongest model in a subscription is also the one you run out of
+first. And the default agentic loop spends it in the worst possible way:
+one model does everything in one context that only ever grows.
+
+Look at where the tokens actually go in a single feature. Locating the
+right code, reading files that turn out to be irrelevant, three failed
+attempts at a fix, the full output of a test suite, then a summary of
+all of it so the next round still has the thread. That is tens of
+thousands of tokens of tool output feeding a decision that is worth a
+few hundred. Every one of them sits in the expensive window, and every
+one of them is re-sent with the next request.
+
+The fix is not a shorter prompt. It is putting the volume somewhere
+else.
+
+## How the tokens are saved
+
+1. **Implementation is delegated.** Production code is written by an
+   Opus subagent in its own fresh context. Search runs, dead ends, file
+   reads and test output land there, not in the orchestrator's window.
+   The orchestrator receives a compact structured return: changed files,
+   criteria met, decisions, risks. This is by far the largest effect.
+2. **Contract handoffs instead of carried history.** Each delegation is
+   a small self-contained commit contract. The codebase is not
+   re-explained every round, and the orchestrator does not have to hold
+   the implementation details of previous rounds to stay coherent.
+3. **Index navigation instead of file dumps.** A code-intelligence index
+   answers "where is this" and "what calls this" with targeted snippets,
+   so full files are read only for the hunks that actually get reviewed.
+4. **An evidence ledger instead of reconstruction.** Each commit leaves a
+   compact structured record: contract hash, red proof, frozen test
+   hash, test results, fingerprints. Later audits navigate that instead
+   of re-reading old agent transcripts, which is the single most
+   expensive way to remember something.
+5. **Bounded repair loops.** At most two repairs per defect, then
+   re-plan. An unbounded fix loop is the worst token sink in agentic
+   development, because its context grows with every failed attempt and
+   its chance of success falls at the same time.
+6. **A fresh audit context.** Final acceptance runs in its own agent. It
+   costs nothing from the main window and it is less anchored, since it
+   never sees the "all done" summaries.
+7. **Process state on disk.** Phases, fingerprints and evidence live in
+   files. The orchestrator never has to hold or repeat them, and a
+   compaction cannot lose them.
+
+Those are the mechanisms. What they are actually worth was measured, and
+the answer is smaller than the list makes it sound. See the next section.
+
+## What it is worth, measured
+
+The headline: on implementation-heavy work the delegated cycle spends
+**33% fewer tokens on the expensive model**, at the same success rate.
+Read as reach, the same measurement says the expensive model's budget
+lasts **about 49% longer**. On a small, well-scoped fix it saves nothing
+at all. And total spend does not drop: delegation moves consumption from
+the expensive model to the cheaper one rather than removing it.
+
+### Setup
+
+Two arms run the same task with the same tools, the same effort level and
+the same turn cap. The only difference is whether implementation is
+delegated to a subagent. Success is a passing test suite, so a cheap
+failure cannot be counted as a saving. Orchestrator: Claude Fable 5.
+Implementer: Claude Opus 5. Effort `medium`. 16 runs, 4 per cell, all 16
+successful, no cost-gate aborts. Cost is computed from the `usage` field
+of every single response, not estimated.
+
+Two tasks of the same kind and different size, chosen to sit on either
+side of the break-even point:
+
+- **small** (`duration`): write one new module against 11 failing tests.
+- **large** (`feature`): write three new modules against 27 failing tests.
+
+### Results
+
+Large task, mean of 4 runs per arm:
+
+| Measure | inline | delegated | change |
+|---|---|---|---|
+| spend on the expensive model | $0.2121 | $0.1426 | **-33%** |
+| output tokens on the expensive model | 1981 | 1258 | -37% |
+| orchestrator context, cumulative | 14596 | 10607 | -27% |
+| orchestrator context, peak | 4136 | 3706 | -10% |
+| total spend, both models | $0.2121 | $0.2219 | **+5%** |
+| success | 4/4 | 4/4 | equal |
+
+The ranges do not overlap on the headline measure (inline $0.1951 to
+$0.2256, delegated $0.1389 to $0.1468), so the effect is not noise.
+
+Small task, mean of 4 runs per arm:
+
+| Measure | inline | delegated | change |
+|---|---|---|---|
+| spend on the expensive model | $0.0785 | $0.0807 | +3% |
+| orchestrator context, cumulative | 6126 | 6636 | +8% |
+| total spend, both models | $0.0785 | $0.1248 | **+59%** |
+| success | 4/4 | 4/4 | equal |
+
+Here the ranges overlap on the expensive model, so the honest reading is
+that delegation changes nothing on that axis while costing 59% more in
+total. The orchestrator still has to understand the problem well enough
+to brief and to verify, so the briefing round trip and the implementer's
+cold start are pure overhead. This matches the skill's own rule: do not
+delegate work you could finish in a handful of tool calls.
+
+### Two things this does not say
+
+**It does not say the workflow is cheaper.** Total spend is flat on the
+large task and clearly worse on the small one. Delegation is a win when
+the strongest model is the scarce resource, which is the normal case on a
+subscription, and a loss when you are counting dollars on an API key. If
+you read "saves cost" as money, you have read it wrong.
+
+**It does not extrapolate.** The measured mechanism scales with the
+number of implementer turns, and in these tasks that was three. In real
+work it is often four times that, so the direction should hold and the
+magnitude is probably understated, but only the 33% is evidence.
+
+### Reproducing it
+
+```bash
+pip install anthropic
+export ANTHROPIC_API_KEY=...          # billed per token, no subscription credits
+python3 bench/bench.py feature duration
+```
+
+All 16 runs cost $2.55 in total. The harness gates spend hard: it aborts
+a single run at `PER_RUN_CAP` and the whole benchmark at `GLOBAL_CAP`, so
+a runaway agent cannot empty the account. Raw per-run data, including
+token counts and cost per model, is in `bench/results.json`; the method
+and its limits are in `bench/README.md`.
+
+## What you get on top: verification that does not depend on trust
+
+Delegating implementation only works if acceptance is real. Agentic
+coding tools fail in a specific, repeatable way: the agent that writes
+the code is also the agent that decides whether the code is acceptable.
+Under that arrangement the cheapest path to "done" is not always to make
+the code correct.
+
+- a test gets weakened, skipped, or its expectation rewritten,
+- a test is red because of a broken import, the implementation fixes the
+  import, and the actual behavior is never verified,
+- the full suite passes, two more lines get changed, and the commit
+  ships against a code state that was never tested,
+- a repair loop runs forever because nobody decided when to stop
+  patching and start re-planning,
+- the final report says "all requirements met" because the tests are
+  green, which only proves conformance with the tests.
+
+Three roles remove the incentive structurally:
+
+| Role | Owns |
+|---|---|
+| Orchestrator | requirements, commit contracts, acceptance tests, red proof, review, verification, staging, commits |
+| Implementer (Opus subagent) | production code and repairs, nothing else |
+| Auditor (fresh context) | independent requirement-first completeness acceptance |
+
+The rule that carries the whole thing: the agent that implements never
+decides whether its own implementation is accepted.
+
+### The cycle per commit
+
+1. **Commit contract.** Small enough to stay atomic, independently
+   checkable and revertible. Every acceptance criterion is traced back
+   to its origin, so no criterion can be back-derived from code that
+   already exists.
+2. **Red phase, before any implementation.** The orchestrator writes the
+   binding acceptance tests and proves they fail for the right reason.
+   Two kinds of red are legitimate: *behavior red* for an interface that
+   already exists, and *contract red* for a symbol the contract
+   deliberately introduces, where `ModuleNotFoundError` is the expected
+   proof rather than a setup error. Syntax errors, wrong import paths
+   and broken fixtures are never valid red. This is why the orchestrator
+   never has to write a production stub.
+3. **Mechanical freeze.** The acceptance tests are staged and
+   fingerprinted. Only the orchestrator touches the git index. A
+   modified frozen test is detected by hash, not by someone noticing.
+4. **Delegated implementation.** The subagent gets the contract, the
+   provenance, the red proof, the expected change surface and the
+   explicit non-goals.
+5. **Verification gate.** Freeze check first, because a violation makes
+   all further review worthless. Then targeted tests, a direct read of
+   every changed hunk, a per-criterion proof, and a scope review.
+6. **Bounded repair.** A precise defect contract goes back to the
+   implementer. The full suite is not required on every iteration unless
+   the repair touches shared core code, public interfaces, persistence,
+   audit behavior, security boundaries or idempotency. After two failed
+   repairs the commit goes back to planning instead of being patched
+   again.
+7. **Commit gate.** Full suite, complete diff reviewed, contract met, no
+   scope creep, atomic and revertible. Then the commit.
+8. **Requirement-first audit.** In a fresh context, without repair
+   justifications or previous summaries. The auditor interprets the
+   original requirements independently, runs the tests and demos itself,
+   and grades each requirement as met and proven, partially met, not
+   met, or not provable.
+
+A green test run is necessary and not sufficient. The final claim is
+never "the feature is correct" but "the feature demonstrably matches the
+specified requirements, to the extent audit and verification cover
+them".
+
+## Install
+
+Requires Claude Code, Python 3.8 or newer, and git.
+
+```bash
+git clone https://github.com/BernhardJackiewicz/fable-context-maxxing.git
+cd fable-context-maxxing
+./install.sh
+```
+
+The installer copies the skill to `~/.claude/skills/`, the gate CLI to
+`~/.claude/red-proof/`, and merges the two `PreToolUse` hooks into
+`~/.claude/settings.json` after making a backup. It is idempotent.
+
+Then add the block from `examples/CLAUDE.md.snippet` to your global
+`~/.claude/CLAUDE.md`, so the skill is loaded before the first
+production-code change instead of after it.
+
+Verify in a fresh terminal: `/skills` lists the skill, `/hooks` shows
+both gates.
+
+## Usage
+
+```bash
+RP() { python3 ~/.claude/red-proof/red_proof.py "$@"; }
+
+RP contract --file <contract.md>          # phase CONTRACT_CREATED, resets the cycle
+RP red --test <name> --type contract|behavior --expected "<reason>" -- <testcmd>
+git add <acceptance-tests> && RP freeze   # phase TESTS_FROZEN, patch fingerprint
+# implementation happens in a delegated subagent here
+RP check freeze
+RP check targeted -- <testcmd>
+RP check full-suite -- <suitecmd>
+RP attest --diff-reviewed --contract-ok
+RP commit-gate                            # binds all evidence to the current code state
+git commit ...                            # allowed now, exactly one commit per gate
+RP status                                 # phase, fingerprints, evidence
+RP exempt --reason "<why>"                # classified exceptions only, logged
+```
+
+Note for zsh users: put the CLI in a shell function as shown. A variable
+holding the command is not word-split.
+
+## What is actually enforced
+
+The distinction matters, so it is stated plainly.
+
+**Instructed**, meaning the model can in principle deviate: everything
+in the skill body. Contract quality, review depth, audit rigor.
+
+**Enforced**, meaning a hook denies the tool call:
+
+- production-code edits in a repository with no active cycle, or with
+  the acceptance tests not yet frozen,
+- `git commit` without a passed commit gate,
+- `git commit` when the code changed after verification, because all
+  evidence is bound to a content fingerprint (HEAD plus the content of
+  every modified and untracked file). Staging does not change that
+  fingerprint, so `git add` of reviewed production code is fine, while a
+  single edited line invalidates the gate,
+- a second commit on the same gate: one gate, one commit,
+- any modification of a frozen acceptance test, detected by comparing
+  the staged patch hash.
+
+**Produced by the tool, not claimed by the model:** the red proof (the
+CLI runs the command and refuses to record a red that exited 0), the
+targeted and full-suite results, and the fingerprints. The only
+model-attested items are `--diff-reviewed` and `--contract-ok`, because
+reading a diff and checking a criterion cannot be delegated to a script.
+
+## Limits
+
+Stated deliberately, because a workflow that overclaims is the thing
+this repository argues against.
+
+- The measured saving is 33% of expensive-model tokens on one task shape,
+  from 16 runs on two synthetic tasks in throwaway repositories, driven by
+  a harness that imitates the Claude Code loop rather than being it, at a
+  fixed `medium` effort and with contexts under 5000 tokens. It is a
+  first, narrow measurement, not a benchmark suite. Nothing in it supports
+  a larger number, and it says nothing about total cost, which did not
+  drop.
+- The measurement ran through a harness that imitates the Claude Code
+  loop rather than being it. Running the same tasks through real Claude
+  Code sessions billed to two separate API keys would close that gap and
+  has not been done.
+- The hooks are process CI, not a security boundary. They fail open on
+  internal errors and can be switched off locally by whoever owns the
+  machine.
+- Commits made from a plain terminal outside Claude Code are not gated.
+  Add a `pre-commit` hook or CI if you need that.
+- The commit gate has to decide which repository a shell command commits
+  into, and it does that without a shell parser. It honors a leading
+  `cd <dir>` and a `git -C <dir>` that belongs to the commit invocation
+  itself. Everything else falls back to the reported working directory:
+  a non-leading `cd` (`ls && cd other && git commit`), chained `cd`,
+  subshells, variables or escaped spaces in the path, aliases, and
+  environment-prefixed invocations. In those shapes a commit into a
+  second repository is judged against the session repository, which can
+  allow an ungated commit. Keep one repository per session, or add a
+  `pre-commit` hook for a guarantee that does not depend on reading the
+  command line.
+- The attestation step remains model-attested.
+- The method proves conformance with the specification that was checked.
+  It does not prove the specification was right. A misunderstood
+  requirement can be implemented perfectly and pass every gate. The
+  requirement-first audit is the mitigation, not a guarantee.
+- State is keyed per repository, not per session, so a delegated
+  subagent and the orchestrator see the same gate.
+- Tested on macOS. Path handling for temporary directories is
+  POSIX-oriented.
+
+## Repository layout
+
+| Path | Purpose |
+|---|---|
+| `skills/fable-context-maxxing/SKILL.md` | the workflow as an installable Claude Code skill (English, default) |
+| `skills/fable-context-maxxing/SKILL.de.md` | the same skill in German, the language it was written in |
+| `bin/red_proof.py` | gate CLI and hook entry point, no dependencies |
+| `examples/settings-hooks.json` | the hook block, for manual merging |
+| `examples/CLAUDE.md.snippet` | the global instruction that triggers the skill |
+| `test/smoke_test.sh` | 21 checks covering every deny path, the happy path and repository resolution |
+| `install.sh` | idempotent installer with a settings backup |
+| `bench/bench.py` | the paired benchmark, with hard cost gates |
+| `bench/results.json` | raw per-run data for the 16 reported runs |
+| `bench/README.md` | the method, and what it cannot tell you |
+
+Two names, one thing: the skill and this repository are
+`fable-context-maxxing`, because context economy is the first design
+goal. The verification mechanism inside is called red-proof, after the
+part of it that is unusual: it is not enough that tests exist, the red
+itself has to be established as a valid proof before implementation
+starts.
+
+## Language
+
+English is the default. The installer picks which skill body it writes:
+
+```bash
+./install.sh              # English (default)
+./install.sh --lang de    # the German original
+SKILL_LANG=de ./install.sh
+```
+
+Both files live in `skills/fable-context-maxxing/` as `SKILL.md` and
+`SKILL.de.md`, and both carry the same English frontmatter description,
+which is what triggers automatic loading, so auto-invocation behaves
+identically either way. The German file is the original the method was
+written in and is kept in sync rather than archived. Another language is
+welcome as a pull request: add `SKILL.<code>.md` and one line to the
+`case` in `install.sh`.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

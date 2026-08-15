@@ -1,0 +1,431 @@
+{
+  "runs": [
+    {
+      "task": "duration",
+      "arm": "delegated",
+      "success": true,
+      "pytest_tail": [
+        "11 passed in 0.01s"
+      ],
+      "seconds": 46.3,
+      "aborted": null,
+      "orchestrator": {
+        "calls": 4,
+        "cost": 0.088876,
+        "out_tokens": 789,
+        "ctx_peak": 2252,
+        "ctx_cumulative": 6736
+      },
+      "implementer": {
+        "calls": 4,
+        "cost": 0.05004825,
+        "out_tokens": 842,
+        "ctx_peak": 2323,
+        "ctx_cumulative": 7522
+      },
+      "total_cost": 0.1389
+    },
+    {
+      "task": "duration",
+      "arm": "inline",
+      "success": true,
+      "pytest_tail": [
+        "11 passed in 0.01s"
+      ],
+      "seconds": 25.6,
+      "aborted": null,
+      "orchestrator": {
+        "calls": 4,
+        "cost": 0.0847935,
+        "out_tokens": 787,
+        "ctx_peak": 2045,
+        "ctx_cumulative": 6252
+      },
+      "implementer": {
+        "calls": 0,
+        "cost": 0.0,
+        "out_tokens": 0,
+        "ctx_peak": 0,
+        "ctx_cumulative": 0
+      },
+      "total_cost": 0.0848
+    },
+    {
+      "task": "feature",
+      "arm": "delegated",
+      "success": true,
+      "pytest_tail": [
+        "27 passed in 0.02s"
+      ],
+      "seconds": 56.8,
+      "aborted": null,
+      "orchestrator": {
+        "calls": 4,
+        "cost": 0.138928,
+        "out_tokens": 1224,
+        "ctx_peak": 3632,
+        "ctx_cumulative": 10408
+      },
+      "implementer": {
+        "calls": 3,
+        "cost": 0.0760595,
+        "out_tokens": 1645,
+        "ctx_peak": 4292,
+        "ctx_cumulative": 8885
+      },
+      "total_cost": 0.215
+    },
+    {
+      "task": "feature",
+      "arm": "inline",
+      "success": true,
+      "pytest_tail": [
+        "27 passed in 0.02s"
+      ],
+      "seconds": 43.7,
+      "aborted": null,
+      "orchestrator": {
+        "calls": 5,
+        "cost": 0.221655,
+        "out_tokens": 2131,
+        "ctx_peak": 4315,
+        "ctx_cumulative": 14647
+      },
+      "implementer": {
+        "calls": 0,
+        "cost": 0.0,
+        "out_tokens": 0,
+        "ctx_peak": 0,
+        "ctx_cumulative": 0
+      },
+      "total_cost": 0.2217
+    },
+    {
+      "task": "feature",
+      "arm": "delegated",
+      "success": true,
+      "pytest_tail": [
+        "27 passed in 0.02s"
+      ],
+      "seconds": 67.7,
+      "aborted": null,
+      "orchestrator": {
+        "calls": 4,
+        "cost": 0.146778,
+        "out_tokens": 1304,
+        "ctx_peak": 3773,
+        "ctx_cumulative": 10793
+      },
+      "implementer": {
+        "calls": 3,
+        "cost": 0.0801895,
+        "out_tokens": 1779,
+        "ctx_peak": 4418,
+        "ctx_cumulative": 9041
+      },
+      "total_cost": 0.227
+    },
+    {
+      "task": "feature",
+      "arm": "inline",
+      "success": true,
+      "pytest_tail": [
+        "27 passed in 0.02s"
+      ],
+      "seconds": 38.7,
+      "aborted": null,
+      "orchestrator": {
+        "calls": 5,
+        "cost": 0.195095,
+        "out_tokens": 1851,
+        "ctx_peak": 3973,
+        "ctx_cumulative": 13391
+      },
+      "implementer": {
+        "calls": 0,
+        "cost": 0.0,
+        "out_tokens": 0,
+        "ctx_peak": 0,
+        "ctx_cumulative": 0
+      },
+      "total_cost": 0.1951
+    },
+    {
+      "task": "duration",
+      "arm": "delegated",
+      "success": true,
+      "pytest_tail": [
+        "11 passed in 0.01s"
+      ],
+      "seconds": 39.7,
+      "aborted": null,
+      "orchestrator": {
+        "calls": 4,
+        "cost": 0.077818,
+        "out_tokens": 767,
+        "ctx_peak": 2175,
+        "ctx_cumulative": 6582
+      },
+      "implementer": {
+        "calls": 5,
+        "cost": 0.0494025,
+        "out_tokens": 845,
+        "ctx_peak": 2337,
+        "ctx_cumulative": 8819
+      },
+      "total_cost": 0.1272
+    },
+    {
+      "task": "duration",
+      "arm": "inline",
+      "success": true,
+      "pytest_tail": [
+        "11 passed in 0.01s"
+      ],
+      "seconds": 26.4,
+      "aborted": null,
+      "orchestrator": {
+        "calls": 4,
+        "cost": 0.073068,
+        "out_tokens": 788,
+        "ctx_peak": 1935,
+        "ctx_cumulative": 5876
+      },
+      "implementer": {
+        "calls": 0,
+        "cost": 0.0,
+        "out_tokens": 0,
+        "ctx_peak": 0,
+        "ctx_cumulative": 0
+      },
+      "total_cost": 0.0731
+    },
+    {
+      "task": "feature",
+      "arm": "delegated",
+      "success": true,
+      "pytest_tail": [
+        "27 passed in 0.02s"
+      ],
+      "seconds": 51.2,
+      "aborted": null,
+      "orchestrator": {
+        "calls": 4,
+        "cost": 0.138928,
+        "out_tokens": 1212,
+        "ctx_peak": 3662,
+        "ctx_cumulative": 10468
+      },
+      "implementer": {
+        "calls": 3,
+        "cost": 0.0793595,
+        "out_tokens": 1748,
+        "ctx_peak": 4401,
+        "ctx_cumulative": 9030
+      },
+      "total_cost": 0.2183
+    },
+    {
+      "task": "feature",
+      "arm": "inline",
+      "success": true,
+      "pytest_tail": [
+        "27 passed in 0.02s"
+      ],
+      "seconds": 45.2,
+      "aborted": null,
+      "orchestrator": {
+        "calls": 5,
+        "cost": 0.20588499999999998,
+        "out_tokens": 2002,
+        "ctx_peak": 4172,
+        "ctx_cumulative": 13715
+      },
+      "implementer": {
+        "calls": 0,
+        "cost": 0.0,
+        "out_tokens": 0,
+        "ctx_peak": 0,
+        "ctx_cumulative": 0
+      },
+      "total_cost": 0.2059
+    },
+    {
+      "task": "duration",
+      "arm": "delegated",
+      "success": true,
+      "pytest_tail": [
+        "11 passed in 0.01s"
+      ],
+      "seconds": 38.8,
+      "aborted": null,
+      "orchestrator": {
+        "calls": 4,
+        "cost": 0.078568,
+        "out_tokens": 770,
+        "ctx_peak": 2205,
+        "ctx_cumulative": 6642
+      },
+      "implementer": {
+        "calls": 4,
+        "cost": 0.039131,
+        "out_tokens": 814,
+        "ctx_peak": 1921,
+        "ctx_cumulative": 6287
+      },
+      "total_cost": 0.1177
+    },
+    {
+      "task": "duration",
+      "arm": "inline",
+      "success": true,
+      "pytest_tail": [
+        "11 passed in 0.01s"
+      ],
+      "seconds": 24.1,
+      "aborted": null,
+      "orchestrator": {
+        "calls": 4,
+        "cost": 0.080178,
+        "out_tokens": 839,
+        "ctx_peak": 2085,
+        "ctx_cumulative": 6332
+      },
+      "implementer": {
+        "calls": 0,
+        "cost": 0.0,
+        "out_tokens": 0,
+        "ctx_peak": 0,
+        "ctx_cumulative": 0
+      },
+      "total_cost": 0.0802
+    },
+    {
+      "task": "feature",
+      "arm": "delegated",
+      "success": true,
+      "pytest_tail": [
+        "27 passed in 0.02s"
+      ],
+      "seconds": 54.0,
+      "aborted": null,
+      "orchestrator": {
+        "calls": 4,
+        "cost": 0.145738,
+        "out_tokens": 1290,
+        "ctx_peak": 3756,
+        "ctx_cumulative": 10759
+      },
+      "implementer": {
+        "calls": 3,
+        "cost": 0.0816895,
+        "out_tokens": 1824,
+        "ctx_peak": 4485,
+        "ctx_cumulative": 9116
+      },
+      "total_cost": 0.2274
+    },
+    {
+      "task": "feature",
+      "arm": "inline",
+      "success": true,
+      "pytest_tail": [
+        "27 passed in 0.02s"
+      ],
+      "seconds": 47.0,
+      "aborted": null,
+      "orchestrator": {
+        "calls": 6,
+        "cost": 0.225602,
+        "out_tokens": 1939,
+        "ctx_peak": 4084,
+        "ctx_cumulative": 16629
+      },
+      "implementer": {
+        "calls": 0,
+        "cost": 0.0,
+        "out_tokens": 0,
+        "ctx_peak": 0,
+        "ctx_cumulative": 0
+      },
+      "total_cost": 0.2256
+    },
+    {
+      "task": "duration",
+      "arm": "delegated",
+      "success": true,
+      "pytest_tail": [
+        "11 passed in 0.01s"
+      ],
+      "seconds": 35.6,
+      "aborted": null,
+      "orchestrator": {
+        "calls": 4,
+        "cost": 0.077518,
+        "out_tokens": 761,
+        "ctx_peak": 2175,
+        "ctx_cumulative": 6582
+      },
+      "implementer": {
+        "calls": 3,
+        "cost": 0.0379045,
+        "out_tokens": 858,
+        "ctx_peak": 2318,
+        "ctx_cumulative": 5189
+      },
+      "total_cost": 0.1154
+    },
+    {
+      "task": "duration",
+      "arm": "inline",
+      "success": true,
+      "pytest_tail": [
+        "11 passed in 0.01s"
+      ],
+      "seconds": 26.2,
+      "aborted": null,
+      "orchestrator": {
+        "calls": 4,
+        "cost": 0.076148,
+        "out_tokens": 816,
+        "ctx_peak": 1998,
+        "ctx_cumulative": 6044
+      },
+      "implementer": {
+        "calls": 0,
+        "cost": 0.0,
+        "out_tokens": 0,
+        "ctx_peak": 0,
+        "ctx_cumulative": 0
+      },
+      "total_cost": 0.0761
+    }
+  ],
+  "budget": {
+    "total": 1.889,
+    "by_model": {
+      "claude-fable-5": {
+        "cost": 1.5213240000000003,
+        "in": 76729,
+        "write": 0,
+        "read": 37084,
+        "out": 14339,
+        "calls": 52
+      },
+      "claude-opus-5": {
+        "cost": 0.3676765,
+        "in": 32719,
+        "write": 0,
+        "read": 14763,
+        "out": 7868,
+        "calls": 21
+      }
+    }
+  },
+  "config": {
+    "orchestrator": "claude-fable-5",
+    "implementer": "claude-opus-5",
+    "effort": "medium",
+    "max_turns": 14
+  }
+}
