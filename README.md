@@ -1,7 +1,7 @@
 # fable-context-maxxing
 
-**Get about 49% more out of a Fable subscription: on implementation-heavy
-work this workflow spends 33% fewer tokens on the expensive model, at an
+**Get about 40% more out of a Fable subscription: on implementation-heavy
+work this workflow spends 28% fewer tokens on the expensive model, at an
 identical success rate.** The orchestrator's context holds decisions; the
 volume (implementation, search, test output, audit) runs in delegated or
 fresh contexts.
@@ -12,13 +12,15 @@ field of every response and the raw per-run data ships in this repository.
 Three things that number does not say, stated here rather than in a
 footnote, because they decide whether it is worth anything to you:
 
-- **Total spend does not drop.** Delegation moves consumption from the
-  expensive model to the cheaper one. It is a win when the strongest
-  model is the scarce resource, which is the normal case on a
-  subscription, and a wash when you are counting dollars on an API key.
-- **It saves nothing on small tasks.** On a one-module fix the same
-  measurement shows no gain on the expensive model and 59% higher total
-  cost. The break-even is real and it is documented below.
+- **It spends more tokens overall, not fewer.** Delegation moves work to
+  the cheaper model rather than removing it, and it adds a briefing and a
+  cold start: across both models the large task used 37% *more* tokens.
+  It is a win when the strongest model is the scarce resource, which is
+  the normal case on a subscription, and a loss when you are counting
+  every token you buy.
+- **It costs more on small tasks.** On a one-module fix the same
+  measurement shows 7% more tokens on the expensive model and 119% more
+  across both. The break-even is real and it is documented below.
 - **It was measured on small synthetic repositories**, at roughly 5 tool
   calls and $0.22 per run. Nothing here has been measured at the scale of
   a large production codebase.
@@ -81,11 +83,16 @@ the answer is smaller than the list makes it sound. See the next section.
 ## What it is worth, measured
 
 The headline: on implementation-heavy work the delegated cycle spends
-**33% fewer tokens on the expensive model**, at the same success rate.
+**28% fewer tokens on the expensive model**, at the same success rate.
 Read as reach, the same measurement says the expensive model's budget
-lasts **about 49% longer**. On a small, well-scoped fix it saves nothing
-at all. And total spend does not drop: delegation moves consumption from
-the expensive model to the cheaper one rather than removing it.
+lasts **about 40% longer**. On a small, well-scoped fix it is slightly
+worse than doing the work inline. And the total number of tokens goes up,
+not down: delegation moves work to the cheaper model rather than removing
+it.
+
+Everything below is counted in tokens. Dollars are left out on purpose:
+they depend on which models you pair and on cache pricing, and they made
+a token claim look like a cost claim.
 
 ### Setup
 
@@ -107,46 +114,48 @@ side of the break-even point:
 
 Large task, mean of 4 runs per arm:
 
-| Measure | inline | delegated | change |
+| Measure (tokens) | inline | delegated | change |
 |---|---|---|---|
-| spend on the expensive model | $0.2121 | $0.1426 | **-33%** |
-| output tokens on the expensive model | 1981 | 1258 | -37% |
-| orchestrator context, cumulative | 14596 | 10607 | -27% |
-| orchestrator context, peak | 4136 | 3706 | -10% |
-| total spend, both models | $0.2121 | $0.2219 | **+5%** |
+| **on the expensive model, total** | **16,576** | **11,864** | **-28%** |
+| of that, context re-sent | 14,596 | 10,607 | -27% |
+| of that, output including thinking | 1,981 | 1,258 | -37% |
+| context peak, single request | 4,136 | 3,706 | -10% |
+| across both models | 16,576 | 22,632 | **+37%** |
 | success | 4/4 | 4/4 | equal |
 
-The ranges do not overlap on the headline measure (inline $0.1951 to
-$0.2256, delegated $0.1389 to $0.1468), so the effect is not noise.
+The ranges do not overlap on the headline measure, so the effect is not
+noise. Note the last two rows together: the expensive model does 28% less
+work, and the system as a whole does 37% more, because the implementer
+starts cold and has to be briefed.
 
 Small task, mean of 4 runs per arm:
 
-| Measure | inline | delegated | change |
+| Measure (tokens) | inline | delegated | change |
 |---|---|---|---|
-| spend on the expensive model | $0.0785 | $0.0807 | +3% |
-| orchestrator context, cumulative | 6126 | 6636 | +8% |
-| total spend, both models | $0.0785 | $0.1248 | **+59%** |
+| **on the expensive model, total** | **6,934** | **7,407** | **+7%** |
+| of that, context re-sent | 6,126 | 6,636 | +8% |
+| context peak, single request | 2,016 | 2,202 | +9% |
+| across both models | 6,934 | 15,201 | **+119%** |
 | success | 4/4 | 4/4 | equal |
 
-Here the ranges overlap on the expensive model, so the honest reading is
-that delegation changes nothing on that axis while costing 59% more in
-total. The orchestrator still has to understand the problem well enough
-to brief and to verify, so the briefing round trip and the implementer's
-cold start are pure overhead. This matches the skill's own rule: do not
-delegate work you could finish in a handful of tool calls.
+Here delegation is simply worse, and the ranges are separated on that
+too, so it is not noise either. The orchestrator still has to understand
+the problem well enough to brief and to verify, so the briefing round
+trip and the implementer's cold start are pure overhead. This matches the
+skill's own rule: do not delegate work you could finish in a handful of
+tool calls.
 
 ### Two things this does not say
 
-**It does not say the workflow is cheaper.** Total spend is flat on the
-large task and clearly worse on the small one. Delegation is a win when
-the strongest model is the scarce resource, which is the normal case on a
-subscription, and a loss when you are counting dollars on an API key. If
-you read "saves cost" as money, you have read it wrong.
+**It does not say the workflow uses fewer tokens.** It uses more: 37%
+more on the large task, 119% more on the small one. What drops is the
+share carried by the expensive model. Read "saves" as "saves the scarce
+allowance", never as "saves total consumption".
 
 **It does not extrapolate.** The measured mechanism scales with the
-number of implementer turns, and in these tasks that was three. In real
-work it is often four times that, so the direction should hold and the
-magnitude is probably understated, but only the 33% is evidence.
+number of implementer turns, and in these tasks that was three, so this
+sits at the low end of where the effect exists at all. Whether it grows
+with longer implementations is untested here. Only the 28% is evidence.
 
 ### Reproducing it
 
@@ -308,7 +317,7 @@ reading a diff and checking a criterion cannot be delegated to a script.
 Stated deliberately, because a workflow that overclaims is the thing
 this repository argues against.
 
-- The measured saving is 33% of expensive-model tokens on one task shape,
+- The measured saving is 28% of expensive-model tokens on one task shape,
   from 16 runs on two synthetic tasks in throwaway repositories, driven by
   a harness that imitates the Claude Code loop rather than being it, at a
   fixed `medium` effort and with contexts under 5000 tokens. It is a

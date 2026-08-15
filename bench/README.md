@@ -27,15 +27,19 @@ gives up early looks like an arm that was efficient.
 
 ## What is recorded
 
-Every response's `usage` is read and charged at published per-token rates,
-including the cache multipliers (writes at 1.25x, reads at 0.1x). Nothing
-is estimated. Per run:
+Every response's `usage` is read. Token counts are raw; dollars are also
+recorded, at published rates including the cache multipliers (writes at
+1.25x, reads at 0.1x), but no claim rests on them, because a cost ratio
+and a token ratio are not the same number: on the large task the expensive
+model does 28% fewer tokens and, at the prices in force, 33% less cost.
+Nothing is estimated. Per run:
 
 | Field | Meaning |
 |---|---|
-| `orchestrator.cost` | dollars spent on the expensive model. This is the headline measure |
+| `orchestrator.ctx_cumulative` + `orchestrator.out_tokens` | tokens on the expensive model. This is the headline measure |
 | `orchestrator.ctx_peak` | largest single-request context on the orchestrator |
 | `orchestrator.ctx_cumulative` | sum of context across the orchestrator's requests, which is what a growing window actually costs |
+| `orchestrator.cost` | dollars at published rates, recorded but not used for any claim: it depends on the model pair and on cache pricing |
 | `orchestrator.out_tokens` | output tokens on the expensive model, thinking included |
 | `implementer.*` | the same fields for the subagent |
 | `total_cost` | both models together |
