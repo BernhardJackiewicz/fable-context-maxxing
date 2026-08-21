@@ -64,6 +64,11 @@ Development follows a strictly separated maker-checker-auditor model:
 - Opus (implementer): implementation and repair of production code, and
   nothing else.
 - Audit agent: independent completeness acceptance in a fresh context.
+- Checker agents (stage gates): one fresh context per constraint check
+  (static, coverage, and later stages), see 6.6.
+- Control agent (optional per work package): an independent reviewer
+  with fresh context that checks a finished cycle against its contract
+  before the block audit; used in practice on larger plans.
 
 Ground rules:
 
@@ -125,13 +130,20 @@ contract. A missing new API symbol is then the expected contract red and
 not an invalid setup error. The orchestrator never writes production code
 or interface skeletons.
 
+**C. Scenario red** (for acceptance criteria written as Gherkin
+scenarios): the expected failure is a failing scenario, either a
+missing step definition or a failing step that corresponds exactly to
+an acceptance criterion of the contract. Feature files are
+specification, not production code: they may be written before the
+freeze and are frozen together with their step skeletons.
+
 **Invalid red**: unintended failures are not accepted, such as a syntax
 error in the test, a wrong import path, broken test configuration, faulty
 test data, accidental fixture problems, or any failure unrelated to the
 commit contract.
 
-**Red proof**: record the test ID, the kind of red (`contract` or
-`behavior`), the expected failure reason, the actual failure reason, and
+**Red proof**: record the test ID, the kind of red (`contract`,
+`behavior` or `scenario`), the expected failure reason, the actual failure reason, and
 the outcome (expected red confirmed or not confirmed). Implementation may
 begin only on a confirmed red proof. Red tests are never committed as a
 lasting red intermediate state; the final commit must be green and
@@ -210,6 +222,28 @@ refactorings, unintended API changes, new persistence, new copies of
 personal data, audit, security and idempotency effects, freeze
 invariants.
 
+**6.6 Constraint gate (stage 1)**: static analysis and coverage run in
+every commit cycle whose contract declares them
+(`RP contract --require static,coverage`). They are executed by
+independent checker agents, never by the orchestrator and never by the
+implementer.
+
+**Checker-agent pattern**: a checker starts in a fresh context via the
+Agent tool. It receives: the repository path, the exact check command
+including its threshold, the acceptance criteria of the contract that
+concern its gate, and the expected report format (PASS or FAIL, the
+measured value, the top findings as file:line). It does not receive:
+implementer transcripts, the implementer's return, earlier evidence,
+or the orchestrator's opinions. The checker runs `RP check <name> ...`
+itself, so the evidence is bound to the code fingerprint mechanically
+and cannot be asserted into existence. Findings go back to the
+orchestrator as input for defect contracts (section 7); the checker
+never repairs.
+
+Roles, restated: the machine reads unit tests and implementation
+output; the human reads specifications and QA-level reports. The
+implementer and the checkers share no context in either direction.
+
 ### 7. Repair loop
 
 When the verification gate fails the orchestrator does not implement the
@@ -235,7 +269,9 @@ should it be split?). No unbounded repair loops.
 ### 8. Commit gate (orchestrator)
 
 Required: freeze gate green; all acceptance tests green; affected
-regression tests green; full suite green; project-specific checks green;
+regression tests green; full suite green; every evidence key declared in the contract's
+required_evidence green and fresh (this is where project-specific
+checks live);
 the complete diff reviewed; the contract fully met; no scope creep; no
 open regressions; no unexplained TODOs; the diff atomic and revertible.
 
@@ -255,7 +291,10 @@ history, or the audit agent running things itself.
 ### 10. Block gate
 
 After each block defined in the plan: full suite; project-specific
-reproduction gates; block invariants; plan versus commit reconciliation;
+reproduction gates; mutation hardening where the project declares it
+(a `mutation` evidence key on the block-closing contract, executed by
+its own checker agent; its evidence uses production staleness, so it
+survives test-only and docs-only edits); block invariants; plan versus commit reconciliation;
 a check for omitted scope; a check of the evidence ledger; and only then
 a fast reindex, so that a known-bad intermediate state never becomes the
 navigation basis for the next block.
@@ -312,12 +351,17 @@ invalidates existing evidence automatically.
 RP() { python3 ~/.claude/red-proof/red_proof.py "$@"; }
 
 RP contract --file <contract.md>            # phase CONTRACT_CREATED, resets the cycle
-RP red --test <name> --type contract|behavior --expected "<reason>" -- <testcmd>
+RP contract --file <c.md> --require static,coverage   # declare stage gates for this cycle
+RP red --test <name> --type contract|behavior|scenario --expected "<reason>" -- <testcmd>
 git add <acceptance-tests> && RP freeze     # phase TESTS_FROZEN, patch fingerprint
 # implementation by Opus
 RP check freeze
 RP check targeted -- <testcmd>
 RP check full-suite -- <suitecmd>
+RP check static -- <lintcmd>                # exit-code gate, run by a checker agent
+RP check coverage --min 90 -- <covcmd>      # metric gate, threshold enforced mechanically
+RP check mutation --min 80 -- <mutcmd>      # block-gate stage: survives test-only edits
+RP check property -- <cmd with --hypothesis-seed=N>   # refuses to run unseeded
 RP attest --diff-reviewed --contract-ok     # the only model-attested items
 RP commit-gate                              # COMMIT_READY, bound to the fingerprint
 git commit ...                              # allowed only now, exactly one commit per gate
@@ -327,6 +371,18 @@ RP exempt --reason "<why>"                  # classified exceptions only (4h, lo
 
 Note for zsh: a `$RP` variable is not word-split; use the `RP()` function
 above. Each deny message from the hooks names the next required step.
+
+A failed check arms a worktree snapshot guard: rerunning the same
+check command on an unchanged tree is refused, the attempt still
+counts, and `contract --max-attempts` (default 5, advisory) adds the
+instruction to stop repairing and re-plan once the budget is reached.
+A corrected command runs; the counter keeps its history.
+
+Known limit: the hooks gate the Edit and Write tools and `git commit`.
+Writes that bypass those tools (bash heredocs, `sed -i`, output
+redirection) are not intercepted; the content fingerprint still
+invalidates stale evidence, but the edit itself is not blocked. Treat
+bash-level writes to production files as out of process.
 
 ## Part 4: Binding meta-rules
 
@@ -348,5 +404,9 @@ above. Each deny message from the hooks names the next required step.
 - A green test run is necessary but not sufficient.
 - The audit agent interprets the original requirements independently and
   may run tests and demos itself.
+- Constraint checks run in independent checker agents with fresh
+  context; the implementer never sees checker reasoning, the checker
+  never sees implementer transcripts.
+- A checker agent never repairs; its findings become defect contracts.
 - The method proves conformance with the specification that was checked,
   not absolute correctness of the specification.

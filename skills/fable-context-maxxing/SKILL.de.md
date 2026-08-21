@@ -60,6 +60,8 @@ Die Entwicklung folgt einem strikt getrennten Maker-Checker-Auditor-Modell:
 - Orchestrator (das Hauptmodell der Session, aktuell Fable 5): Orchestrierung, Anforderungsableitung, Commit-Planung, Test-Spezifikation, Red-Proof, Review, Verifikation, Staging und Commit-Entscheidung.
 - Opus (Implementierer): ausschließlich Implementierung und Reparatur des Produktivcodes.
 - Audit-Agent: unabhängige Vollständigkeits-Abnahme in frischem Kontext.
+- Checker-Agenten (Stufen-Gates): ein frischer Kontext pro Constraint-Check (static, coverage, spätere Stufen), siehe 6.6.
+- Kontroll-Agent (optional pro Arbeitspaket): unabhängiger Reviewer mit frischem Kontext, der einen abgeschlossenen Zyklus vor dem Block-Audit gegen seinen Contract prüft; in der Praxis bei größeren Plänen im Einsatz.
 
 Grundregeln:
 
@@ -103,9 +105,11 @@ Der Orchestrator schreibt die verbindlichen Akzeptanz- und Regressionstests. Es 
 
 **B. Contract-Red** (für bewusst neu einzuführende Module, Klassen, Funktionen oder Methoden): Hier darf der erwartete Fehler ausdrücklich beispielsweise `ImportError`, `ModuleNotFoundError` oder `AttributeError` sein, aber nur dann, wenn exakt das fehlende Symbol Bestandteil des eingefrorenen Commit-Contracts ist. Ein fehlendes neues API-Symbol ist in diesem Fall der erwartete Contract-Red und kein ungültiger Setup-Fehler. Der Orchestrator schreibt niemals Produktivcode oder Interface-Skelette.
 
+**C. Scenario-Red** (für als Gherkin-Szenarien formulierte Akzeptanzkriterien): Der erwartete Fehler ist ein fehlschlagendes Szenario, entweder eine fehlende Step-Definition oder ein fehlschlagender Step, der exakt einem Akzeptanzkriterium des Contracts entspricht. Feature-Dateien sind Spezifikation, kein Produktivcode: Sie dürfen vor dem Freeze geschrieben werden und werden zusammen mit ihren Step-Skeletten eingefroren.
+
 **Ungültiges Rot**: Nicht akzeptiert werden unbeabsichtigte Fehler wie Syntaxfehler im Test, falscher Importpfad, kaputte Testkonfiguration, fehlerhafte Testdaten, unbeabsichtigte Fixture-Probleme oder Fehler ohne Bezug zum Commit-Contract.
 
-**Red-Proof**: Festgehalten werden Test-ID, Red-Art (`contract` oder `behavior`), erwarteter Fehlergrund, tatsächlicher Fehlergrund, Ergebnis (erwartetes Rot bestätigt / nicht bestätigt). Nur bei bestätigtem Red-Proof darf die Implementierung beginnen. Rote Tests werden nicht als dauerhaft roter Zwischenstand committet; der finale Commit muss grün und einzeln bisectable sein.
+**Red-Proof**: Festgehalten werden Test-ID, Red-Art (`contract`, `behavior` oder `scenario`), erwarteter Fehlergrund, tatsächlicher Fehlergrund, Ergebnis (erwartetes Rot bestätigt / nicht bestätigt). Nur bei bestätigtem Red-Proof darf die Implementierung beginnen. Rote Tests werden nicht als dauerhaft roter Zwischenstand committet; der finale Commit muss grün und einzeln bisectable sein.
 
 ### 3. Mechanischer Freeze (Orchestrator)
 
@@ -143,6 +147,12 @@ Kompakte strukturierte Rückgabe: geänderte Dateien, erfüllte Akzeptanzkriteri
 
 **6.5 Scope Review**: Änderungen außerhalb des Contracts, unnötige Refactorings, unbeabsichtigte API-Änderungen, neue Persistenz, neue personenbezogene Kopien, Audit-/Security-/Idempotenz-Auswirkungen, Freeze-Invarianten.
 
+**6.6 Constraint Gate (Stufe 1)**: Static Analysis und Coverage laufen in jedem Commit-Zyklus, dessen Contract sie deklariert (`RP contract --require static,coverage`). Ausgeführt werden sie von unabhängigen Checker-Agenten, niemals vom Orchestrator und niemals vom Implementierer.
+
+**Checker-Agenten-Muster**: Ein Checker startet in frischem Kontext über das Agent-Tool. Er erhält: Repository-Pfad, das exakte Check-Kommando inklusive Schwelle, die für sein Gate relevanten Akzeptanzkriterien des Contracts und das erwartete Reportformat (PASS oder FAIL, Messwert, Top-Befunde als Datei:Zeile). Er erhält nicht: Implementierer-Transkripte, die Implementierer-Rückgabe, frühere Nachweise oder Einschätzungen des Orchestrators. Der Checker führt `RP check <name> ...` selbst aus; der Nachweis ist damit mechanisch an den Code-Fingerprint gebunden und kann nicht behauptet werden. Befunde gehen als Grundlage für Defect Contracts (Abschnitt 7) an den Orchestrator zurück; der Checker repariert nie.
+
+Rollen, noch einmal: Die Maschine liest Unit-Tests und Implementierungsausgabe; der Mensch liest Spezifikationen und QA-Reports. Implementierer und Checker teilen in keiner Richtung Kontext.
+
 ### 7. Repair Loop
 
 Bei fehlgeschlagenem Verification Gate implementiert der Orchestrator nicht selbst, sondern erstellt einen Defect Contract: beobachtetes Verhalten, erwartetes Verhalten, reproduzierender Test, betroffenes Akzeptanzkriterium, erlaubter Fix-Scope. Reparatur geht an Opus.
@@ -155,7 +165,7 @@ Vollsuite pro Repair-Iteration nicht zwingend, aber sofort bei: Core-Code, öffe
 
 ### 8. Commit Gate (Orchestrator)
 
-Pflicht: Freeze Gate grün; alle Akzeptanztests grün; betroffene Regressionstests grün; vollständige Suite grün; projektspezifische Checks grün; vollständiger Diff reviewed; Contract vollständig erfüllt; kein Scope Creep; keine offenen Regressionen; keine unerklärten TODOs; Diff atomar und revertierbar.
+Pflicht: Freeze Gate grün; alle Akzeptanztests grün; betroffene Regressionstests grün; vollständige Suite grün; jeder im Contract per required_evidence deklarierte Nachweis-Key grün und frisch (hier leben die projektspezifischen Checks); vollständiger Diff reviewed; Contract vollständig erfüllt; kein Scope Creep; keine offenen Regressionen; keine unerklärten TODOs; Diff atomar und revertierbar.
 
 Erst danach staged der Orchestrator den Produktivcode und committet. Jeder Commit der Hauptserie ist einzeln grün, verständlich, bisectable, revertierbar.
 
@@ -165,7 +175,7 @@ Pro Commit ein kompakter strukturierter Eintrag: `commit_id`, `contract_hash`, `
 
 ### 10. Block Gate
 
-Nach jedem im Plan definierten Block: vollständige Suite; projektspezifische Reproduktions-Gates; Block-Invarianten; Plan-vs-Commit-Abgleich; Prüfung auf ausgelassenen Scope; Prüfung des Evidence Ledgers; erst danach Fast-Reindex (kein fehlerhafter Zwischenstand als Navigationsbasis).
+Nach jedem im Plan definierten Block: vollständige Suite; projektspezifische Reproduktions-Gates; Mutation-Hardening, wo das Projekt es deklariert (mutation-Nachweis am blockschließenden Contract, ausgeführt vom eigenen Checker-Agenten; der Nachweis nutzt Production-Staleness und überlebt reine Test- und Doku-Änderungen); Block-Invarianten; Plan-vs-Commit-Abgleich; Prüfung auf ausgelassenen Scope; Prüfung des Evidence Ledgers; erst danach Fast-Reindex (kein fehlerhafter Zwischenstand als Navigationsbasis).
 
 ### 11. Unabhängige Vollständigkeits-Abnahme
 
@@ -193,12 +203,17 @@ Globale PreToolUse-Hooks blockieren Produktivcode-Edits ohne aktiven Zyklus und 
 RP() { python3 ~/.claude/red-proof/red_proof.py "$@"; }
 
 RP contract --file <contract.md>            # Phase CONTRACT_CREATED, setzt Zyklus zurück
-RP red --test <name> --type contract|behavior --expected "<Grund>" -- <testcmd>
+RP contract --file <c.md> --require static,coverage   # Stufen-Gates für diesen Zyklus deklarieren
+RP red --test <name> --type contract|behavior|scenario --expected "<Grund>" -- <testcmd>
 git add <acceptance-tests> && RP freeze     # Phase TESTS_FROZEN, Patch-Fingerprint
 # Implementierung durch Opus
 RP check freeze
 RP check targeted -- <testcmd>
 RP check full-suite -- <suitecmd>
+RP check static -- <lintcmd>                # Exit-Code-Gate, ausgeführt vom Checker-Agenten
+RP check coverage --min 90 -- <covcmd>      # Metrik-Gate, Schwelle mechanisch erzwungen
+RP check mutation --min 80 -- <mutcmd>      # Block-Gate-Stufe: überlebt reine Test-Edits
+RP check property -- <cmd mit --hypothesis-seed=N>   # läuft nicht ohne fixierten Seed
 RP attest --diff-reviewed --contract-ok     # einzige modell-attestierte Punkte
 RP commit-gate                              # COMMIT_READY, an Fingerprint gebunden
 git commit ...                              # nur jetzt erlaubt, genau ein Commit pro Gate
@@ -207,6 +222,10 @@ RP exempt --reason "<why>"                  # nur für klassifizierte Ausnahmen 
 ```
 
 Hinweis für zsh: `$RP`-Variablen werden nicht wortgesplittet; die Funktion `RP()` wie oben verwenden. Deny-Meldungen der Hooks nennen jeweils den nächsten erforderlichen Schritt.
+
+Ein fehlgeschlagener Check aktiviert einen Worktree-Snapshot-Guard: Derselbe Check mit demselben Kommando auf unverändertem Baum wird verweigert, der Versuch zählt trotzdem, und `contract --max-attempts` (Default 5, beratend) hängt ab Erreichen des Budgets die Aufforderung an, die Reparatur zu stoppen und neu zu planen. Ein korrigiertes Kommando läuft; der Zähler behält seine Historie.
+
+Bekannte Grenze: Die Hooks gaten die Edit- und Write-Tools sowie `git commit`. Schreibzugriffe an diesen Tools vorbei (Bash-Heredocs, `sed -i`, Output-Redirection) werden nicht abgefangen; der Content-Fingerprint invalidiert zwar veraltete Nachweise, der Edit selbst wird aber nicht blockiert. Bash-Schreibzugriffe auf Produktivdateien gelten als außerhalb des Verfahrens.
 
 ## Teil 4: Verbindliche Meta-Regeln
 
@@ -225,4 +244,6 @@ Hinweis für zsh: `$RP`-Variablen werden nicht wortgesplittet; die Funktion `RP(
 - Jeder Haupt-Commit ist grün und bisectable.
 - Ein grüner Testlauf ist notwendig, aber nicht hinreichend.
 - Der Audit-Agent interpretiert die ursprünglichen Anforderungen unabhängig und darf Tests und Demos selbst ausführen.
+- Constraint-Checks laufen in unabhängigen Checker-Agenten mit frischem Kontext; der Implementierer sieht keine Checker-Begründungen, der Checker keine Implementierer-Transkripte.
+- Ein Checker-Agent repariert nie; seine Befunde werden zu Defect Contracts.
 - Das Verfahren beweist Konformität mit der überprüften Spezifikation, nicht absolute Korrektheit der Spezifikation.

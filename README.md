@@ -312,6 +312,47 @@ targeted and full-suite results, and the fingerprints. The only
 model-attested items are `--diff-reviewed` and `--contract-ok`, because
 reading a diff and checking a criterion cannot be delegated to a script.
 
+## Stage gates in this repository
+
+Beyond the base cycle, contracts can declare constraint gates with
+`--require`. Each declared gate is run by an independent checker agent
+with fresh context (see the skill, section 6.6) and recorded as
+fingerprint-bound evidence. The reference tool choice for this
+repository:
+
+```
+RP check static -- sh -c "ruff check bin/ bench/*.py && xenon --max-absolute C bin/"
+RP check coverage --min 40 -- sh -c "python3 -m coverage run -m pytest -q tests/ && python3 -m coverage report --include='bin/red_proof.py'"
+RP check mutation --min 80 -- sh -c "mutmut run && mutmut results"
+RP check property -- python3 -m pytest -q tests/ --hypothesis-seed=1234
+```
+
+A failed check arms a worktree snapshot guard: rerunning the same
+command on an unchanged tree does not execute it, the attempt still
+counts (`contract --max-attempts`, default 5), and exhausting the budget
+tells the cycle to stop repairing and re-plan. A corrected command does
+run on that same tree, because a wrong command is repaired without
+touching a file, and its failure counts on from the previous attempt.
+
+`--min` applies to the gates whose number comes out of the run. The
+property gate is not one of them: its metric is the seed the caller
+passed in, and a threshold on an input grades the input instead of the
+run, so `--min` on it is refused before anything is executed.
+
+Thresholds are set per contract, not globally: a cheap gate runs on
+every declaring commit, an expensive one only on block-closing
+contracts. Two honest notes on the numbers above. The complexity
+ceiling is C because four long-standing blocks in the gate CLI sit
+there today; tightening to B is a refactoring goal, not a claim. And
+the coverage floor is 40 because the measured line coverage of
+`bin/red_proof.py` is 43% today. That figure is low for a reason worth
+knowing rather than hiding: `tests/` drives the CLI through
+subprocesses, and line coverage does not see what runs in a child
+process, so the suite is credited with far less than it actually
+exercises. Both numbers are this project's choices at this point in its
+life. They are not floors anyone else should adopt: pick thresholds
+your own repository can meet honestly.
+
 ## Limits
 
 Stated deliberately, because a workflow that overclaims is the thing
@@ -363,6 +404,7 @@ this repository argues against.
 | `bin/red_proof.py` | gate CLI and hook entry point, no dependencies |
 | `examples/settings-hooks.json` | the hook block, for manual merging |
 | `examples/CLAUDE.md.snippet` | the global instruction that triggers the skill |
+| `tests/` | the gate CLI's own pytest suite, 324 tests covering the state machine, the checks, the fingerprints and the hooks |
 | `test/smoke_test.sh` | 21 checks covering every deny path, the happy path and repository resolution |
 | `install.sh` | idempotent installer with a settings backup |
 | `bench/bench.py` | the paired benchmark, with hard cost gates |
