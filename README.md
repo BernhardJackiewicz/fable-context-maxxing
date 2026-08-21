@@ -351,7 +351,10 @@ subprocesses, and line coverage does not see what runs in a child
 process, so the suite is credited with far less than it actually
 exercises. Both numbers are this project's choices at this point in its
 life. They are not floors anyone else should adopt: pick thresholds
-your own repository can meet honestly.
+your own repository can meet honestly. The mutation and property lines
+are tool-choice examples rather than gates this repository currently
+meets: neither mutmut nor the hypothesis plugin is a dependency here,
+so copy them only into a project that carries those tools.
 
 One more honesty note, because this section would otherwise imply more
 than was measured. Whether these gates pay for themselves has been
