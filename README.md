@@ -353,6 +353,23 @@ exercises. Both numbers are this project's choices at this point in its
 life. They are not floors anyone else should adopt: pick thresholds
 your own repository can meet honestly.
 
+One more honesty note, because this section would otherwise imply more
+than was measured. Whether these gates pay for themselves has been
+tested in a private development extension of this repository: a paired
+benchmark against hidden test suites the agent never sees, under
+pre-registered decision rules, six hypotheses with verdicts. The short
+version is narrow. The stage-1 gate (visible suite plus coverage floor)
+earned its accept only for a weak implementer model working from an
+example-specified task, where it converts plausible near-misses into
+hidden passes; the same gate showed no effect for frontier or mid-tier
+implementers, and none when the task states its rules outright. The
+mutation and property stages each converted an occasional blind spot of
+the stage-1 gate but neither earned its cost under the registered
+rules. Treat the gates above as mechanisms with a narrow, measured
+value window, not as universally paid-for protection, and expect their
+main worth on real work to be the discipline they enforce rather than a
+measured defect reduction.
+
 ## Limits
 
 Stated deliberately, because a workflow that overclaims is the thing
